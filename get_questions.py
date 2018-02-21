@@ -2,8 +2,9 @@ import re
 import gc
 import sys
 import csv
-import HTMLParser as HP
 import numpy as np
+import HTMLParser as HP
+from bs4 import BeautifulSoup
 import xml.etree.cElementTree as ET
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -14,7 +15,7 @@ count = 0
 args = sys.argv
 p = HP.HTMLParser()
 posts_infile = args[1]
-duplicate_pairs_infile = args[2] + ".npy"
+duplicate_pairs_infile = args[2]
 duplicate_pairs_outfile = args[3] + ".csv"
 
 duplicate_pair_ids = np.load(duplicate_pairs_infile)
@@ -36,15 +37,23 @@ for event, elem in context:
 		if post_type == 1:
 			count += 1
 			post_id = int(elem.get("Id"))
-			title = elem.get("Title").encode("utf-8").strip()
-			content = elem.get("Body").decode().encode("utf-8").strip()
-			try:
-				content = p.unescape(content)
-				content = re.sub(r"<.*?>", "", content)
-			except:
-				pass
-			content = re.sub(r"[\n]+", "", content)
 			if post_id in titles:
+				title = elem.get("Title").encode("utf-8").strip()
+				content = elem.get("Body").decode().encode("utf-8").strip()
+				try:
+					content = p.unescape(content)
+					content = BeautifulSoup(content, "lxml")
+					for tag in content.find_all("pre"):
+						tag.decompose()
+					for tag in content.find_all(True):
+						tag.attrs = None
+					content = content.get_text("\n")
+					content = re.sub(r"[\n]+", " ", content)
+					content = re.sub(r"[^\x00-\x7F]+", " ", content)
+					content = content.strip()
+				except:
+					pass
+
 				titles[post_id] = title
 				body[post_id] = content
 
@@ -54,8 +63,6 @@ for event, elem in context:
 		elem.clear()
 		if root:
 			root.clear()
-
-print count
 
 outfile = open(duplicate_pairs_outfile, "w")
 writer = csv.writer(outfile, delimiter=',')
