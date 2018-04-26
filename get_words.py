@@ -29,10 +29,7 @@ for event, elem in context:
 			try:
 				content = p.unescape(content)
 				content = BeautifulSoup(content, "lxml")
-				for tag in content.find_all("pre"):
-					tag.decompose()
-				for tag in content.find_all(True):
-					tag.attrs = None
+				content.pre.decompose()
 				content = content.get_text("\n").strip()
 				content = re.sub(r"[\n]+", " ", content)
 				content = re.sub(r"[^\x00-\x7F]+", " ", content)

@@ -16,7 +16,7 @@ args = sys.argv
 p = HP.HTMLParser()
 posts_infile = args[1]
 duplicate_pairs_infile = args[2]
-duplicate_pairs_outfile = args[3] + ".csv"
+duplicate_pairs_outfile = args[3] + ".tsv"
 
 duplicate_pair_ids = np.load(duplicate_pairs_infile)
 for pair in duplicate_pair_ids:
@@ -40,22 +40,23 @@ for event, elem in context:
 			if post_id in titles:
 				title = elem.get("Title").encode("utf-8").strip()
 				content = elem.get("Body").decode().encode("utf-8").strip()
+				content = p.unescape(content)
 				try:
-					content = p.unescape(content)
 					content = BeautifulSoup(content, "lxml")
-					for tag in content.find_all("pre"):
-						tag.decompose()
-					for tag in content.find_all(True):
-						tag.attrs = None
-					content = content.get_text("\n")
+					try:
+						content.pre.decompose()
+					except:
+						pass
+					content = content.get_text("\n").strip()
 					content = re.sub(r"[\n]+", " ", content)
 					content = re.sub(r"[^\x00-\x7F]+", " ", content)
+					content = re.sub(r'Possible Duplicate: ', "", content)
+					content = re.sub(r'See: ', "", content)
 					content = content.strip()
+					titles[post_id] = title
+					body[post_id] = content
 				except:
 					pass
-
-				titles[post_id] = title
-				body[post_id] = content
 
 			if count % 50000 == 0:
 				gc.collect()
